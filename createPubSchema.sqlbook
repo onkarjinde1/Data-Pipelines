@@ -1,0 +1,70 @@
+-- SQLBook: Code
+-- Active: 1698188936578@@127.0.0.1@5432@dblp@public
+DROP TABLE IF EXISTS Authored;
+DROP TABLE IF EXISTS Author;
+DROP TABLE IF EXISTS Article;
+DROP TABLE IF EXISTS Book;
+DROP TABLE IF EXISTS Incollection;
+DROP TABLE IF EXISTS Inproceedings;
+DROP TABLE IF EXISTS Publication;
+
+CREATE TABLE Author (
+    id INTEGER,
+    name TEXT,
+    homepage TEXT,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE Publication (
+    pubid INTEGER,
+    pubkey TEXT,
+    title TEXT,
+    year TEXT,
+    PRIMARY KEY (pubid)
+);
+
+ALTER TABLE Publication
+ADD CONSTRAINT secondaryKey UNIQUE (pubkey);
+
+CREATE TABLE Article (
+    pubid INTEGER,
+    journal TEXT,
+    month TEXT,
+    volume TEXT,
+    number TEXT,
+    PRIMARY KEY (pubid),
+    FOREIGN KEY (pubid) REFERENCES Publication ON DELETE CASCADE
+);
+
+CREATE TABLE Book (
+    pubid INTEGER,
+    publisher TEXT,
+    isbn TEXT,
+    PRIMARY KEY (pubid),
+    FOREIGN KEY (pubid) REFERENCES Publication ON DELETE CASCADE
+);
+
+CREATE TABLE Incollection(
+    pubid INTEGER,
+    booktitle TEXT,
+    publisher TEXT,
+    isbn TEXT,
+    PRIMARY KEY (pubid),
+    FOREIGN KEY (pubid) REFERENCES Publication ON DELETE CASCADE
+);
+
+CREATE TABLE Inproceedings(
+    pubid INTEGER,
+    booktitle TEXT,
+    editor TEXT,
+    PRIMARY KEY (pubid),
+    FOREIGN KEY (pubid) REFERENCES Publication ON DELETE CASCADE
+);
+
+CREATE TABLE Authored(
+    id INTEGER NULL,
+    pubid INTEGER NULL,
+    PRIMARY KEY (id, pubid),
+    FOREIGN KEY (id) REFERENCES Author,
+    FOREIGN KEY (pubid) REFERENCES Publication
+);

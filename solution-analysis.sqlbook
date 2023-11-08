@@ -1,0 +1,114 @@
+-- SQLBook: Code
+--Find the top 20 authors with the largest number of publications since 2010:
+SELECT a.name, COUNT(p.pubid) AS num_publications
+FROM Author a
+LEFT JOIN Authored b ON a.id = b.id
+LEFT JOIN Publication p ON b.pubid = p.pubid
+WHERE CAST(p.year AS INTEGER) >= 2010
+GROUP BY a.name
+ORDER BY num_publications DESC
+LIMIT 20;
+
+-- SQLBook: Code
+---Find the top 20 authors with the largest number of publications where the publications are of type 'inproceedings':
+
+SELECT a.name, COUNT(p.pubid) AS num_inproceedings
+FROM Author a
+LEFT JOIN Authored b ON a.id = b.id
+LEFT JOIN Publication p ON b.pubid = p.pubid
+WHERE p.pubkey LIKE '%/sigmod/%'
+GROUP BY a.name
+ORDER BY num_inproceedings DESC
+LIMIT 20;
+
+-- SQLBook: Code
+--Find the top 20 authors with the largest number of publications in 'SIGMOD Conference' and 'VLDB':
+
+-- For SIGMOD Conference
+SELECT a.name, COUNT(p.pubid) AS num_sigmod
+FROM Author a
+LEFT JOIN Authored b ON a.id = b.id
+LEFT JOIN Publication p ON b.pubid = p.pubid
+WHERE p.pubkey LIKE '%/sigmod/%'
+GROUP BY a.name
+ORDER BY num_sigmod DESC
+LIMIT 20;
+
+-- For VLDB
+SELECT a.name, COUNT(p.pubid) AS num_vldb
+FROM Author a
+LEFT JOIN Authored b ON a.id = b.id
+LEFT JOIN Publication p ON b.pubid = p.pubid
+WHERE p.pubkey LIKE '%/vldb/%'
+GROUP BY a.name
+ORDER BY num_vldb DESC
+LIMIT 20;
+
+-- SQLBook: Code
+--Find (a) all authors who published at least 12 SIGMOD papers but never published a PODS paper, 
+--and (b) all authors who published at least 6 PODS papers but never published a SIGMOD paper:
+
+-- (a) Authors with 12 or more SIGMOD papers and no PODS papers
+SELECT a.name, COUNT(DISTINCT p.pubkey) AS num_sigmod
+FROM Author a
+LEFT JOIN Authored b ON a.id = b.id
+LEFT JOIN Publication p ON b.pubid = p.pubid
+WHERE p.pubkey LIKE '%/sigmod/%'
+GROUP BY a.name
+HAVING num_sigmod >= 12
+AND COUNT(DISTINCT CASE WHEN p.pubkey LIKE '%/pods/%' THEN p.pubkey ELSE NULL END) = 0;
+
+-- (b) Authors with 6 or more PODS papers and no SIGMOD papers
+SELECT a.name, COUNT(DISTINCT p.pubkey) AS num_pods
+FROM Author a
+LEFT JOIN Authored b ON a.id = b.id
+LEFT JOIN Publication p ON b.pubid = p.pubid
+WHERE p.pubkey LIKE '%/pods/%'
+GROUP BY a.name
+HAVING num_pods >= 6
+AND COUNT(DISTINCT CASE WHEN p.pubkey LIKE '%/sigmod/%' THEN p.pubkey ELSE NULL END) = 0;
+
+-- SQLBook: Code
+SELECT a.name
+FROM Author a
+LEFT JOIN Authored b ON a.id = b.id
+LEFT JOIN Publication p ON b.pubid = p.pubid
+WHERE p.pubkey LIKE '%/sigmod/%'
+GROUP BY a.name
+HAVING COUNT(DISTINCT p.pubkey) >= 12
+AND COUNT(DISTINCT CASE WHEN p.pubkey LIKE '%/pods/%' THEN p.pubkey ELSE NULL END) = 0;
+
+-- SQLBook: Code
+SELECT a.name
+FROM Author a
+LEFT JOIN Authored b ON a.id = b.id
+LEFT JOIN Publication p ON b.pubid = p.pubid
+WHERE p.pubkey LIKE '%/pods/%'
+GROUP BY a.name
+HAVING COUNT(DISTINCT p.pubkey) >= 6
+AND COUNT(DISTINCT CASE WHEN p.pubkey LIKE '%/sigmod/%' THEN p.pubkey ELSE NULL END) = 0;
+
+-- SQLBook: Code
+---Extra credit question
+
+
+-- Create a temporary table to store the number of publications per author per decade
+DROP TABLE IF EXISTS AuthorDecadeStats;
+CREATE TEMP TABLE AuthorDecadeStats AS
+WITH Decades AS (
+  SELECT generate_series(1980, 2020, 10) AS start_year, generate_series(1989, 2029, 10) AS end_year
+)
+SELECT
+  a.id AS author_id,
+  EXTRACT(YEAR FROM to_date(p.year, 'YYYY')) AS publication_year,
+  COUNT(*) AS num_publications
+FROM Author a
+JOIN Authored au ON a.id = au.id
+JOIN Publication p ON au.pubid = p.pubid
+CROSS JOIN Decades d
+WHERE EXTRACT(YEAR FROM to_date(p.year, 'YYYY')) BETWEEN d.start_year AND d.end_year
+GROUP BY a.id, publication_year;
+
+
+
+-- Find the most prolific author for each decade

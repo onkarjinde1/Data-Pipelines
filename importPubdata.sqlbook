@@ -1,0 +1,325 @@
+-- SQLBook: Code
+DROP SEQUENCE IF EXISTS Authorid;
+CREATE SEQUENCE Authorid;
+DROP TABLE IF EXISTS Author_TEMP1;
+CREATE TABLE Author_TEMP1 (
+    id INTEGER,
+    name TEXT
+);
+INSERT INTO Author_TEMP1 (
+    SELECT NEXTVAL('Authorid'), y.v
+    FROM Pub x, Field y
+    WHERE x.k = y.k AND x.p = 'www' AND y.p = 'author'
+    GROUP BY y.v
+);
+DROP TABLE IF EXISTS Author_TEMP2;
+CREATE TABLE Author_TEMP2 (
+    name TEXT,
+    homepage TEXT
+);
+INSERT INTO Author_TEMP2 (
+    SELECT y.v, MIN(z.v)
+    FROM Field y, Field z
+    WHERE y.k = z.k AND y.p = 'author' AND z.p = 'url' AND z.v LIKE '%.edu%'
+    GROUP BY y.v
+);
+INSERT INTO Author (
+    SELECT x.id, x.name, y.homepage
+    FROM Author_TEMP1 x LEFT OUTER JOIN Author_TEMP2 y
+    ON x.name = y.name
+);
+DROP TABLE IF EXISTS Author_TEMP1;
+DROP TABLE IF EXISTS Author_TEMP2;
+
+
+DROP SEQUENCE IF EXISTS Pubid;
+CREATE SEQUENCE Pubid;
+DROP TABLE IF EXISTS Publication_TEMP1;
+CREATE TABLE Publication_TEMP1 (
+    pubid INTEGER,
+    pubkey TEXT
+);
+INSERT INTO Publication_TEMP1 (
+    SELECT NEXTVAL('Pubid'), x.k
+    FROM Field x
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Publication_TEMP2;
+CREATE TABLE Publication_TEMP2 (
+    pubkey TEXT,
+    title TEXT
+);
+INSERT INTO Publication_TEMP2 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y
+    WHERE x.k = y.k AND y.p = 'title'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Publication_TEMP3;
+CREATE TABLE Publication_TEMP3 (
+    pubkey TEXT,
+    year TEXT
+);
+INSERT INTO Publication_TEMP3 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y
+    WHERE x.k = y.k AND y.p = 'year'
+    GROUP BY x.k
+);
+ALTER TABLE Publication
+DROP CONSTRAINT secondaryKey;
+INSERT INTO Publication (
+    SELECT x.pubid, x.pubkey, y.title, z.year
+    FROM Publication_TEMP1 x LEFT OUTER JOIN Publication_TEMP2 y ON x.pubkey = y.pubkey
+    LEFT OUTER JOIN Publication_TEMP3 z ON x.pubkey = z.pubkey
+);
+ALTER TABLE Publication
+ADD CONSTRAINT secondaryKey UNIQUE (pubkey);
+DROP TABLE IF EXISTS Publication_TEMP1;
+DROP TABLE IF EXISTS Publication_TEMP2;
+DROP TABLE IF EXISTS Publication_TEMP3;
+
+
+DROP TABLE IF EXISTS Article_TEMP1;
+CREATE TABLE Article_TEMP1 (
+    pubkey TEXT,
+    journal TEXT
+);
+INSERT INTO Article_TEMP1 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'article' AND y.p = 'journal'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Article_TEMP2;
+CREATE TABLE Article_TEMP2 (
+    pubkey TEXT,
+    month TEXT
+);
+INSERT INTO Article_TEMP2 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'article' AND y.p = 'month'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Article_TEMP3;
+CREATE TABLE Article_TEMP3 (
+    pubkey TEXT,
+    volume TEXT
+);
+INSERT INTO Article_TEMP3 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'article' AND y.p = 'volume'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Article_TEMP4;
+CREATE TABLE Article_TEMP4 (
+    pubkey TEXT,
+    number TEXT
+);
+INSERT INTO Article_TEMP4 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'article' AND y.p = 'number'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Article_TEMP5;
+CREATE TABLE Article_TEMP5 (
+    pubkey TEXT,
+    journal TEXT,
+    month TEXT,
+    volume TEXT,
+    number TEXT
+);
+INSERT INTO Article_TEMP5 (
+    SELECT a.pubkey, a.journal, b.month, c.volume, d.number
+    FROM Article_TEMP1 a FULL OUTER JOIN Article_TEMP2 b ON a.pubkey = b.pubkey
+                         FULL OUTER JOIN Article_TEMP3 c ON a.pubkey = c.pubkey
+                         FULL OUTER JOIN Article_TEMP4 d ON a.pubkey = d.pubkey
+);
+INSERT INTO Article (
+    SELECT p.pubid, t.journal, t.month, t.volume, t.number
+    FROM Publication p, Article_TEMP5 t
+    WHERE p.pubkey = t.pubkey
+);
+DROP TABLE IF EXISTS Article_TEMP1;
+DROP TABLE IF EXISTS Article_TEMP2;
+DROP TABLE IF EXISTS Article_TEMP3;
+DROP TABLE IF EXISTS Article_TEMP4;
+DROP TABLE IF EXISTS Article_TEMP5;
+
+
+DROP TABLE IF EXISTS Book_TEMP1;
+CREATE TABLE Book_TEMP1 (
+    pubkey TEXT,
+    publisher TEXT
+);
+INSERT INTO Book_TEMP1 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'book' AND y.p = 'publisher'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Book_TEMP2;
+CREATE TABLE Book_TEMP2 (
+    pubkey TEXT,
+    isbn TEXT
+);
+INSERT INTO Book_TEMP2 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'book' AND y.p = 'isbn'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Book_TEMP3;
+CREATE TABLE Book_TEMP3 (
+    pubkey TEXT,
+    publisher TEXT,
+    isbn TEXT
+);
+INSERT INTO Book_TEMP3 (
+    SELECT a.pubkey, a.publisher, b.isbn
+    FROM Book_TEMP1 a FULL OUTER JOIN Book_TEMP2 b ON a.pubkey = b.pubkey
+);
+INSERT INTO Book (
+    SELECT p.pubid, t.publisher, t.isbn
+    FROM Publication p, Book_TEMP3 t
+    WHERE p.pubkey = t.pubkey
+);
+DROP TABLE IF EXISTS Book_TEMP1;
+DROP TABLE IF EXISTS Book_TEMP2;
+DROP TABLE IF EXISTS Book_TEMP3;
+
+
+DROP TABLE IF EXISTS Incollection_TEMP1;
+CREATE TABLE Incollection_TEMP1 (
+    pubkey TEXT,
+    booktitle TEXT
+);
+INSERT INTO Incollection_TEMP1 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'incollection' AND y.p = 'booktitle'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Incollection_TEMP2;
+CREATE TABLE Incollection_TEMP2 (
+    pubkey TEXT,
+    publisher TEXT
+);
+INSERT INTO Incollection_TEMP2 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'incollection' AND y.p = 'publisher'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Incollection_TEMP3;
+CREATE TABLE Incollection_TEMP3 (
+    pubkey TEXT,
+    isbn TEXT
+);
+INSERT INTO Incollection_TEMP3 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'incollection' AND y.p = 'isbn'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Incollection_TEMP4;
+CREATE TABLE Incollection_TEMP4 (
+    pubkey TEXT,
+    booktitle TEXT,
+    publisher TEXT,
+    isbn TEXT
+);
+INSERT INTO Incollection_TEMP4 (
+    SELECT a.pubkey, a.booktitle, b.publisher, c.isbn
+    FROM Incollection_TEMP1 a FULL OUTER JOIN Incollection_TEMP2 b ON a.pubkey = b.pubkey
+                              FULL OUTER JOIN Incollection_TEMP3 c on a.pubkey = c.pubkey
+);
+INSERT INTO Incollection (
+    SELECT p.pubid, t.booktitle, t.publisher, t.isbn
+    FROM Publication p, Incollection_TEMP4 t
+    WHERE p.pubkey = t.pubkey
+);
+DROP TABLE IF EXISTS Incollection_TEMP1;
+DROP TABLE IF EXISTS Incollection_TEMP2;
+DROP TABLE IF EXISTS Incollection_TEMP3;
+DROP TABLE IF EXISTS Incollection_TEMP4;
+
+select count(*) from incollection;
+
+
+DROP TABLE IF EXISTS Inproceedings_TEMP1;
+CREATE TABLE Inproceedings_TEMP1 (
+    pubkey TEXT,
+    booktitle TEXT
+);
+INSERT INTO Inproceedings_TEMP1 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'inproceedings' AND y.p = 'booktitle'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Inproceedings_TEMP2;
+CREATE TABLE Inproceedings_TEMP2 (
+    pubkey TEXT,
+    editor TEXT
+);
+INSERT INTO Inproceedings_TEMP2 (
+    SELECT x.k, MIN(y.v)
+    FROM Field x, Field y, Pub z
+    WHERE x.k = y.k AND y.k = z.k AND
+          z.p = 'inproceedings' AND y.p = 'editor'
+    GROUP BY x.k
+);
+DROP TABLE IF EXISTS Inproceedings_TEMP3;
+CREATE TABLE Inproceedings_TEMP3 (
+    pubkey TEXT,
+    booktitle TEXT,
+    editor TEXT
+);
+INSERT INTO Inproceedings_TEMP3 (
+    SELECT a.pubkey, a.booktitle, b.editor
+    FROM Inproceedings_TEMP1 a FULL OUTER JOIN Inproceedings_TEMP2 b ON a.pubkey = b.pubkey
+);
+INSERT INTO Inproceedings (
+    SELECT p.pubid, t.booktitle, t.editor
+    FROM Publication p, Inproceedings_TEMP3 t
+    WHERE p.pubkey = t.pubkey
+);
+DROP TABLE IF EXISTS Inproceedings_TEMP1;
+DROP TABLE IF EXISTS Inproceedings_TEMP2;
+DROP TABLE IF EXISTS Inproceedings_TEMP3;
+
+
+DROP TABLE IF EXISTS Authored_TEMP1;
+CREATE TABLE Authored_TEMP1 (
+    id INTEGER,
+    pubkey TEXT
+);
+INSERT INTO Authored_TEMP1 (
+    SELECT a.id, x.k
+    FROM Author a, Field x
+    WHERE x.p = 'author' AND a.name = x.v
+    GROUP BY a.id, x.k
+);
+INSERT INTO Authored (
+    SELECT t.id, p.pubid
+    FROM Authored_TEMP1 t, Publication p
+    WHERE t.pubkey = p.pubkey
+);
+
+
+
+
