@@ -1,7 +1,6 @@
 #make sure to run this with python 2
 
 import xml.sax
-import re
 
 
 class DBLPContentHandler(xml.sax.ContentHandler):
