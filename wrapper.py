@@ -33,7 +33,7 @@ class DBLPContentHandler(xml.sax.ContentHandler):
     if name in DBLPContentHandler.fieldList:
       DBLPContentHandler.field = name
       DBLPContentHandler.content = ""
- 
+
   def endElement(self, name):
     if name in DBLPContentHandler.fieldList:
       DBLPContentHandler.fieldFile.write(DBLPContentHandler.key)
@@ -57,6 +57,6 @@ class DBLPContentHandler(xml.sax.ContentHandler):
 def main(sourceFileName):
   source = open(sourceFileName)
   xml.sax.parse(source, DBLPContentHandler())
- 
+
 if __name__ == "__main__":
   main("dblp.xml")
